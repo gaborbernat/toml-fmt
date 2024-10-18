@@ -5,7 +5,6 @@ from io import StringIO
 from typing import TYPE_CHECKING
 
 import pytest
-
 from toml_fmt_common import GREEN, RED, RESET, FmtNamespace, TOMLFormatter, run
 
 if TYPE_CHECKING:
@@ -20,7 +19,6 @@ class DumpNamespace(FmtNamespace):
 
 
 class Dumb(TOMLFormatter[DumpNamespace]):
-
     def __init__(self) -> None:
         super().__init__(DumpNamespace())
 

@@ -1,13 +1,12 @@
 """Main entry point for the formatter."""
 
 from __future__ import annotations
-from __future__ import annotations
 
 from argparse import ArgumentParser, ArgumentTypeError
 from typing import Sequence
 
-from .toml_fmt_common import TOMLFormatter, FmtNamespace, run
 from ._lib import Settings, format_toml
+from .toml_fmt_common import FmtNamespace, TOMLFormatter, run
 
 
 class PyProjectFmtNamespace(FmtNamespace):
@@ -16,7 +15,6 @@ class PyProjectFmtNamespace(FmtNamespace):
 
 
 class PyProjectFormatter(TOMLFormatter[PyProjectFmtNamespace]):
-
     def __init__(self) -> None:
         super().__init__(PyProjectFmtNamespace())
 
@@ -65,8 +63,10 @@ class PyProjectFormatter(TOMLFormatter[PyProjectFmtNamespace]):
         )
         return format_toml(content, settings)
 
+
 def runner(args: Sequence[str] | None = None) -> int:
     return run(PyProjectFormatter(), args)
+
 
 if __name__ == "__main__":
     raise SystemExit(runner())

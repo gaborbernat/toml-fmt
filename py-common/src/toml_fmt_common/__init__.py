@@ -88,8 +88,6 @@ class TOMLFormatter(ABC, Generic[T]):
         raise NotImplementedError
 
 
-
-
 def run(info: TOMLFormatter[T], args: Sequence[str] | None = None) -> int:
     """
     Run the formatter.
@@ -197,7 +195,7 @@ def _build_cli(of: TOMLFormatter[T]) -> ArgumentParser:
         help="number of spaces to use for indentation",
         metavar="count",
     )
-    of.add_format_flags(format_group) # type: ignore[arg-type]
+    of.add_format_flags(format_group)  # type: ignore[arg-type]
     msg = "pyproject.toml file(s) to format, use '-' to read from stdin"
     parser.add_argument(
         "inputs",
