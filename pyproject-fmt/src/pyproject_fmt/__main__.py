@@ -1,79 +1,72 @@
 """Main entry point for the formatter."""
 
 from __future__ import annotations
+from __future__ import annotations
 
-import difflib
-import sys
-from pathlib import Path
-from typing import TYPE_CHECKING
+from argparse import ArgumentParser, ArgumentTypeError
+from typing import Sequence
 
-from pyproject_fmt._lib import format_toml
-from pyproject_fmt.cli import cli_args
-
-if TYPE_CHECKING:
-    from collections.abc import Iterable, Sequence
-
-    from pyproject_fmt.cli import Config
-
-GREEN = "\u001b[32m"
-RED = "\u001b[31m"
-RESET = "\u001b[0m"
+from .toml_fmt_common import TOMLFormatter, FmtNamespace, run
+from ._lib import Settings, format_toml
 
 
-def color_diff(diff: Iterable[str]) -> Iterable[str]:
-    """
-    Visualize difference with colors.
-
-    :param diff: the diff lines
-    """
-    for line in diff:
-        if line.startswith("+"):
-            yield f"{GREEN}{line}{RESET}"
-        elif line.startswith("-"):
-            yield f"{RED}{line}{RESET}"
-        else:
-            yield line
+class PyProjectFmtNamespace(FmtNamespace):
+    keep_full_version: bool
+    max_supported_python: tuple[int, int]
 
 
-def _handle_one(config: Config) -> bool:
-    formatted = format_toml(config.toml, config.settings)
-    before = config.toml
-    changed = before != formatted
-    if config.pyproject_toml is None or config.stdout:  # when reading from stdin or writing to stdout, print new format
-        print(formatted, end="")  # noqa: T201
-        return changed
+class PyProjectFormatter(TOMLFormatter[PyProjectFmtNamespace]):
 
-    if before != formatted and not config.check:
-        config.pyproject_toml.write_text(formatted, encoding="utf-8")
-    if config.no_print_diff:
-        return changed
-    try:
-        name = str(config.pyproject_toml.relative_to(Path.cwd()))
-    except ValueError:
-        name = str(config.pyproject_toml)
-    diff: Iterable[str] = []
-    if changed:
-        diff = difflib.unified_diff(before.splitlines(), formatted.splitlines(), fromfile=name, tofile=name)
+    def __init__(self) -> None:
+        super().__init__(PyProjectFmtNamespace())
 
-    if diff:
-        diff = color_diff(diff)
-        print("\n".join(diff))  # print diff on change  # noqa: T201
-    else:
-        print(f"no change for {name}")  # noqa: T201
-    return changed
+    @property
+    def prog(self) -> str:
+        return "pyproject-fmt"
 
+    @property
+    def filename(self) -> str:
+        return "pyproject.toml"
 
-def run(args: Sequence[str] | None = None) -> int:
-    """
-    Run the formatter.
+    def add_format_flags(self, parser: ArgumentParser) -> None:
+        msg = "keep full dependency versions - do not remove redundant .0 from versions"
+        parser.add_argument("--keep-full-version", action="store_true", help=msg)
 
-    :param args: command line arguments, by default use sys.argv[1:]
-    :return: exit code - 0 means already formatted correctly, otherwise 1
-    """
-    configs = cli_args(sys.argv[1:] if args is None else args)
-    results = [_handle_one(config) for config in configs]
-    return 1 if any(results) else 0  # exit with non success on change
+        def _version_argument(got: str) -> tuple[int, int]:
+            parts = got.split(".")
+            if len(parts) != 2:  # noqa: PLR2004
+                err = f"invalid version: {got}, must be e.g. 3.13"
+                raise ArgumentTypeError(err)
+            try:
+                return int(parts[0]), int(parts[1])
+            except ValueError as exc:
+                err = f"invalid version: {got} due {exc!r}, must be e.g. 3.13"
+                raise ArgumentTypeError(err) from exc
 
+        parser.add_argument(
+            "--max-supported-python",
+            metavar="minor.major",
+            type=_version_argument,
+            default=(3, 13),
+            help="latest Python version the project supports (e.g. 3.13)",
+        )
+
+    @property
+    def override_cli_from_section(self) -> tuple[str, ...]:
+        return "tool", "pyproject-fmt"
+
+    def format(self, content: str, opt: PyProjectFmtNamespace) -> str:
+        settings = Settings(
+            column_width=opt.column_width,
+            indent=opt.indent,
+            keep_full_version=opt.keep_full_version,
+            max_supported_python=opt.max_supported_python,
+            min_supported_python=(3, 9),  # default for when the user did not specify via requires-python
+        )
+        return format_toml(content, settings)
+
+def runner(args: Sequence[str] | None = None) -> int:
+    return run(PyProjectFormatter(), args)
 
 if __name__ == "__main__":
-    raise SystemExit(run())
+    raise SystemExit(runner())

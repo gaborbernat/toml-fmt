@@ -1,5 +1,5 @@
 requires = ["tox>=4.22"]
-env_list = ["fix", "3.13", "3.12", "3.11", "3.10", "3.9", "type", "docs", "pkg_meta"]
+env_list = ["3.13", "3.12", "3.11", "3.10", "3.9", "type", "pkg_meta"]
 skip_missing_interpreters = true
 
 [env_run_base]
@@ -20,7 +20,7 @@ commands = [
             "{work_dir}{/}junit.{env_name}.xml",
             "--no-cov-on-fail",
             "--cov",
-            "{env_site_packages_dir}{/}pyproject_fmt",
+            "{env_site_packages_dir}{/}toml_fmt_common",
             "--cov",
             "{tox_root}{/}tests",
             "--cov-config",
@@ -38,43 +38,10 @@ commands = [
     ],
 ]
 
-[env.fix]
-description = "format the code base to adhere to our styles, and complain about what we cannot do automatically"
-skip_install = true
-dependency_groups = ["fix"]
-pass_env = [{ replace = "ref", of = ["env_run_base", "pass_env"], extend = true }, "PROGRAMDATA"]
-commands = [["pre-commit", "run", "--all-files", "--show-diff-on-failure", { replace = "posargs", extend = true }]]
-
 [env.type]
 description = "run type check on code base"
 dependency_groups = ["type"]
-commands = [["mypy", "src{/}pyproject_fmt"], ["mypy", "tests"]]
-
-[env.docs]
-description = "build documentation"
-dependency_groups = ["docs"]
-commands = [
-    [
-        "sphinx-build",
-        "-d",
-        "{env_tmp_dir}{/}docs_tree",
-        "docs",
-        "{env:READTHEDOCS_OUTPUT:{work_dir}{/}docs_out}/html",
-        "--color",
-        "-b",
-        "html",
-        { replace = "posargs", default = [
-            "-b",
-            "linkcheck",
-        ], extend = true },
-        "-W",
-    ],
-    [
-        "python",
-        "-c",
-        'print(r"documentation available under file://{work_dir}{/}docs_out{/}index.html")',
-    ],
-]
+commands = [["mypy", "src{/}toml_fmt_common", "tests"]]
 
 [env.pkg_meta]
 description = "check that the long description is valid"
