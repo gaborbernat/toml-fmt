@@ -279,7 +279,6 @@ fn generate_classifiers_to_entry(
         if array.kind() == ARRAY {
             let array_node = array.as_node().unwrap();
             ensure_trailing_comma(array_node);
-            eprintln!("DEBUG generate_classifiers_to_entry - array text before: {}", array_node.text());
             let mut must_have: HashSet<String> = HashSet::new();
             must_have.insert(String::from("Programming Language :: Python :: 3 :: Only"));
             must_have.extend(
@@ -309,20 +308,20 @@ fn generate_classifiers_to_entry(
                             let txt = load_text(token.text(), BASIC_STRING);
                             delete_mode = delete.contains(&txt);
                             if delete_mode {
-                                let mut remove_count = to_insert.len();
-                                for (at, v) in to_insert.iter().rev().enumerate() {
-                                    if [COMMA, BRACKET_START].contains(&v.kind()) {
-                                        remove_count = at;
-                                        for (i, e) in to_insert.iter().enumerate().skip(to_insert.len() - at) {
-                                            if e.kind() == LINE_BREAK {
-                                                remove_count = i + 1;
-                                                break;
-                                            }
-                                        }
+                                let mut truncate_at = to_insert.len();
+                                for (rev_idx, v) in to_insert.iter().rev().enumerate() {
+                                    let fwd_idx = to_insert.len() - 1 - rev_idx;
+                                    if v.kind() == BRACKET_START {
+                                        truncate_at = fwd_idx + 1;
+                                        break;
+                                    }
+                                    if v.kind() == COMMA {
+                                        // Keep the comma, remove whitespace/newline after it
+                                        truncate_at = fwd_idx + 1;
                                         break;
                                     }
                                 }
-                                to_insert.truncate(remove_count);
+                                to_insert.truncate(truncate_at);
                             }
                         }
                     }
@@ -331,8 +330,6 @@ fn generate_classifiers_to_entry(
                     to_insert.push(array_entry);
                 }
             }
-            eprintln!("DEBUG iteration complete, to_insert.len()={}", to_insert.len());
-
             let mut to_add: Vec<_> = must_have.difference(existing).map(|s| s.as_str()).collect();
             to_add.sort();
             if !to_add.is_empty() {
@@ -360,26 +357,7 @@ fn generate_classifiers_to_entry(
                 }
                 to_insert.extend(trail);
             }
-
-            eprintln!("DEBUG generate_classifiers_to_entry - BEFORE splice_children:");
-            eprintln!("  array_node children (count={}): ", count);
-            for (i, child) in array_node.children_with_tokens().enumerate() {
-                eprintln!("    array_child[{}]: {:?} = {:?}", i, child.kind(), child.as_token().map(|t| t.text()));
-            }
-            eprintln!("  to_insert.len() = {}", to_insert.len());
-            for (i, elem) in to_insert.iter().enumerate() {
-                eprintln!("    to_insert[{}]: {:?}", i, elem.kind());
-            }
-            eprintln!("  Replacing 0..{} with {} elements", count, to_insert.len());
-
             array_node.splice_children(0..count, to_insert);
-
-            eprintln!("DEBUG generate_classifiers_to_entry - AFTER splice_children:");
-            eprintln!("  array_node children:");
-            for (i, child) in array_node.children_with_tokens().enumerate() {
-                eprintln!("    array_child[{}]: {:?}", i, child.kind());
-            }
-            eprintln!("  array text: {}", array_node.text());
         }
     }
 }
